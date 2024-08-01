@@ -1,0 +1,33 @@
+server:
+  port: 8000
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: cep-brasilapi
+          uri: https://brasilapi.com.br
+          predicates:
+            - Path=/cep/microcks/**
+          filters:
+            - RewritePath=/cep/microcks/(?<cep>.*), /api/cep/v1/${cep}
+        - id: cep-viacep
+          uri: https://viacep.com.br
+          predicates:
+            - Path=/cep/fnis/**
+          filters:
+            - RewritePath=/cep/fnis/(?<cep>.*), /ws/${cep}/json/
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      myCircuitBreaker:
+        registerHealthIndicator: true
+        ringBufferSizeInClosedState: 5
+        ringBufferSizeInHalfOpenState: 2
+        waitDurationInOpenState: 5000
+        failureRateThreshold: 50
