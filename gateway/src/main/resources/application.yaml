@@ -5,22 +5,58 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: cep-brasilapi
-          uri: https://brasilapi.com.br
+        - id: client_route
+          uri: http://localhost:9000/
           predicates:
-            - Path=/cep/microcks/**
+            - Path=/cep/{cep}
           filters:
-            - RewritePath=/cep/microcks/(?<cep>.*), /api/cep/v1/${cep}
-        - id: cep-viacep
+            - RewritePath=/cep/(?<cep>.*), /cep/${cep}
+            - name: CircuitBreaker
+              args:
+                name: myCircuitBreaker
+                fallbackUri: forward:/fallback/{cep}
+            - name: FallbackHeaders
+              args:
+                name: myCircuitBreaker
+                headerName: X-Fallback-Reason
+                headerValue: CircuitBreaker Open
+#          metadata:                #timeout por rota
+#            response-timeout: 50  # Tempo limite de resposta em milissegundos (5 segundos) = response-timeout: O tempo máximo que o gateway aguardará por uma resposta da rota
+#            connect-timeout: 20   # Tempo limite de conexão em milissegundos (2 segundos) = connect-timeout: O tempo máximo que o gateway aguardará para estabelecer uma conexão
+
+        - id: fallback_route
           uri: https://viacep.com.br
           predicates:
-            - Path=/cep/fnis/**
+            - Path=/fallback/{cep}
           filters:
-            - RewritePath=/cep/fnis/(?<cep>.*), /ws/${cep}/json/
+            - RewritePath=/fallback/(?<cep>.*), /ws/${cep}/json/
+    metrics:
+      enabled: true
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      simple:
+        enabled: true
+
+
 
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
+    org.springframework.web.reactive: DEBUG
+    io.github.resilience4j.circuitbreaker: DEBUG
+    io.github.resilience4j.retry: DEBUG
+    io.github.resilience4j.timelimiter: DEBUG
+    io.github.resilience4j.bulkhead: DEBUG
 
 resilience4j:
   circuitbreaker:
